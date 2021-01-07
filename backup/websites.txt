@@ -1,0 +1,2 @@
+nazwa_1_strony_w_katalogu_websites:nazwa_bazy_danych
+nazwa_2_strony_w_katalogu_websites:nazwa_bazy_danych

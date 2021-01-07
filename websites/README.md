@@ -1,0 +1,1 @@
+Katalog, w którym przechowywane są strony internetowe
