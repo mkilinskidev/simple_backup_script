@@ -1,43 +1,50 @@
 #!/bin/bash
 
+set -ueo pipefail
+
 DATE=$(date +%Y%m%d_%H%M)
-HOME_DIR="/home/klient.dhosting.pl/USER"
+HOME_DIR="${HOME}"
+RCLONE_PATH="${HOME_DIR}/backup/.rclone"
+FILES_PATH="${HOME_DIR}/backup/.temp"
+REMOTE_PATH="skynet:/share/TimeMachine/hosting"
 
-echo "Starting backup..."
+printf "[INFO] Starting backup..."
+if [ -d "$FILES_PATH" ]; then
+    rm -r "$FILES_PATH"
+fi
 
-for i in $(cat $HOME_DIR/backup/websites.txt) 
+for i in $(cat $HOME_DIR/backup/.config/websites.conf) 
 do
     WEBSITE=$(echo $i | awk -F: '{print $1}')
     DATABASE=$(echo $i | awk -F: '{print $2}')
-    MAINDIR=$HOME_DIR/backup/backup/$DATE/$WEBSITE
+    MAINDIR=$FILES_PATH/$DATE/$WEBSITE
 
     mkdir -p $MAINDIR/files
 
-    echo "Compressing $WEBSITE"	
+    printf "\n[INFO] Compressing $WEBSITE"	
+    tar -zcf "$MAINDIR/files/$WEBSITE.tgz" --directory "$HOME_DIR/websites/" "$WEBSITE" 
 
-    tar -zcpf "$MAINDIR/files/$WEBSITE.tar.gz" "$HOME_DIR/websites/$WEBSITE" 
+    if [ -z "$DATABASE" ]; then
+        printf "\n[WARN] Database name is empty, skipping"
+    else
+        printf "\n[INFO] Dumping database ${DATABASE}"
+        mysqldump --defaults-extra-file=$HOME_DIR/backup/.config/mysql.cnf $DATABASE > $MAINDIR/files/$WEBSITE.sql
+    fi
 
-    echo "Dumping database $DATABASE"
+    printf "\n[INFO] Preparing $WEBSITE to archive"
+    tar -zcf "$MAINDIR/$WEBSITE.tgz" --directory "$MAINDIR" "files"
 
-    mysqldump --defaults-extra-file=$HOME_DIR/.my.cnf $DATABASE > $MAINDIR/files/$WEBSITE.sql
-
-    echo "Compressing files..."
-
-    tar -zcpf "$MAINDIR/$WEBSITE.tar.gz" "$MAINDIR/files"
-
-    echo "Clearing $WEBSITE"
-
+    printf "\n[INFO] Cleanup $WEBSITE"
     rm -r $MAINDIR/files
 
-    echo ""
+    echo
 done
 
-echo "Starting remote send..."
+printf "\n[INFO] Sending files to remote"
+$RCLONE_PATH/rclone copy $FILES_PATH $REMOTE_PATH -P
 
-/home/klient.dhosting.pl/USER/rclone/rclone copy /home/klient.dhosting.pl/USER/backup/backup skynet:/share/hosting -P
+printf "\n[INFO] Cleanup $WEBSITE"
+rm -r $FILES_PATH
 
-echo "Removing backup..."
-
-rm -r $HOME_DIR/backup/backup/*
-
-echo "Done!"
+printf "\n[INFO] Done!"
+exit 0
