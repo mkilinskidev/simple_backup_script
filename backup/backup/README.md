@@ -1,1 +1,0 @@
-Katalog, w którym będą robocze pliki backupów. Na końcu, wszystkie pliki tar z tego katalogu zostaną wysłane na zdalny udział.
